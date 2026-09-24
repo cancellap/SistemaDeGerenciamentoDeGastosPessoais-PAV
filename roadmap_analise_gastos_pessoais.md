@@ -123,7 +123,7 @@ Cada gasto possui uma única categoria.
 
 # 4. Regras de negócio
 
-O sistema terá pelo menos quatro regras de negócio simples.
+O sistema terá **10 regras de negócio**, cobrindo validação de campos, integridade referencial e análise de dados.
 
 ## Regra 1 — Valor do gasto deve ser positivo
 
@@ -171,7 +171,90 @@ categoria_id = 999 → categoria inexistente → rejeitado
 
 ---
 
-## Regra 4 — Identificação de gastos acima do padrão
+## Regra 4 — Nome do usuário é obrigatório
+
+O sistema não deve permitir o cadastro de um usuário sem nome preenchido.
+
+Exemplo:
+
+```text
+Nome: "Maria"  → permitido
+Nome: ""       → rejeitado
+Nome: null     → rejeitado
+```
+
+---
+
+## Regra 5 — E-mail deve ter formato válido
+
+O e-mail informado deve seguir um formato válido, contendo "@" e um domínio.
+
+Exemplo:
+
+```text
+maria@email.com → permitido
+mariaemail.com  → rejeitado
+maria@          → rejeitado
+```
+
+---
+
+## Regra 6 — Nome da categoria deve ser único
+
+Não será permitido cadastrar duas categorias com o mesmo nome.
+
+Exemplo:
+
+```text
+Alimentação → permitido (primeiro cadastro)
+
+Alimentação → rejeitado (já existe)
+```
+
+---
+
+## Regra 7 — Descrição do gasto é obrigatória
+
+O sistema não deve permitir o cadastro de um gasto sem descrição.
+
+Exemplo:
+
+```text
+Descrição: "Almoço" → permitido
+Descrição: ""       → rejeitado
+```
+
+---
+
+## Regra 8 — Usuário deve existir ao cadastrar gasto
+
+Ao cadastrar um gasto, o usuário informado deve existir no banco (mesma lógica da Regra 3, aplicada ao `usuario_id`).
+
+Exemplo:
+
+```text
+usuario_id = 1   → usuário existente    → permitido
+
+usuario_id = 999 → usuário inexistente  → rejeitado
+```
+
+---
+
+## Regra 9 — Não é possível excluir categoria vinculada a gastos
+
+O sistema não deve permitir a exclusão de uma categoria que possua gastos associados a ela, evitando inconsistência nos dados.
+
+Exemplo:
+
+```text
+Categoria "Alimentação" possui gastos cadastrados → exclusão rejeitada
+
+Categoria "Lazer" sem nenhum gasto cadastrado     → exclusão permitida
+```
+
+---
+
+## Regra 10 — Identificação de gastos acima do padrão
 
 O sistema deverá calcular a média dos gastos e identificar valores significativamente acima desse padrão.
 
@@ -737,6 +820,24 @@ Mensagem:
 "O campo nome é obrigatório."
 ```
 
+## E-mail inválido
+
+```text
+Email: mariaemail.com
+
+Mensagem:
+"O e-mail informado não é válido."
+```
+
+## Exclusão bloqueada
+
+```text
+Categoria: Alimentação (possui gastos vinculados)
+
+Mensagem:
+"Não é possível excluir uma categoria que possui gastos cadastrados."
+```
+
 ---
 
 # 14. Docker
@@ -847,10 +948,13 @@ delete
 Implementar:
 
 - CRUD;
+- validação de campos obrigatórios (nome, descrição);
 - validação de valor;
-- validação de e-mail;
-- validação de categoria;
-- regras de negócio.
+- validação de e-mail (unicidade e formato);
+- validação de categoria e usuário (existência);
+- validação de nome de categoria único;
+- validação de exclusão de categoria vinculada a gastos;
+- demais regras de negócio (10 regras, ver Seção 4).
 
 ---
 
@@ -915,9 +1019,13 @@ A interface deverá consumir os endpoints HTTP.
 Testar:
 
 - valores inválidos;
-- registros inexistentes;
+- registros inexistentes (usuário/categoria);
 - categorias inexistentes;
-- campos obrigatórios;
+- e-mails com formato inválido;
+- e-mails duplicados;
+- nomes de categoria duplicados;
+- campos obrigatórios (nome, descrição);
+- exclusão de categoria vinculada a gastos;
 - API indisponível.
 
 ---
@@ -966,23 +1074,22 @@ Alterar um gasto.
 
 Excluir um registro.
 
-### 5. Regra de negócio 1
+### 5. Regras de negócio (validações de campo)
 
-Tentar cadastrar:
+Demonstrar, por exemplo:
 
 ```text
-valor = -50
+valor = -50            → rejeitado
+nome do usuário = ""   → rejeitado
 ```
 
-Demonstrar a rejeição.
+### 6. Regras de negócio (unicidade)
 
-### 6. Regra de negócio 2
+Tentar cadastrar um usuário com e-mail já existente e/ou uma categoria com nome já existente.
 
-Tentar cadastrar um usuário com e-mail já existente.
+### 7. Regras de negócio (integridade referencial)
 
-### 7. Regra de negócio 3
-
-Tentar cadastrar gasto com categoria inexistente.
+Tentar cadastrar gasto com categoria/usuário inexistente e tentar excluir uma categoria vinculada a gastos.
 
 ### 8. Análise
 
@@ -1057,7 +1164,7 @@ analise-gastos/
 - [ ] Routes
 - [ ] Entities
 - [ ] Config
-- [ ] Regras de negócio
+- [ ] 10 regras de negócio
 - [ ] Orientação a objetos
 - [ ] Programação estruturada
 
@@ -1109,7 +1216,7 @@ analise-gastos/
 - [ ] Consulta
 - [ ] Edição
 - [ ] Exclusão
-- [ ] 3 regras de negócio
+- [ ] Amostra das 10 regras de negócio
 - [ ] Comunicação interface/API
 - [ ] Persistência no banco
 - [ ] 2 casos de erro/validação
@@ -1130,6 +1237,18 @@ CRUD:
 ├── Usuario
 ├── Categoria
 └── Gasto
+
+Regras de negócio (10):
+├── Valor do gasto positivo
+├── E-mail único
+├── Categoria deve existir
+├── Nome do usuário obrigatório
+├── E-mail com formato válido
+├── Nome da categoria único
+├── Descrição do gasto obrigatória
+├── Usuário deve existir
+├── Categoria vinculada não pode ser excluída
+└── Identificação de gastos acima do padrão
 
 Análises:
 ├── Total de gastos

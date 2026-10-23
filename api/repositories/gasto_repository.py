@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..entities.gasto import Gasto
@@ -9,9 +10,13 @@ class GastoRepository:
         self.db = db
 
     def create(self, gasto: Gasto) -> Gasto:
-        self.db.add(gasto)
-        self.db.commit()
-        self.db.refresh(gasto)
+        try:
+            self.db.add(gasto)
+            self.db.commit()
+            self.db.refresh(gasto)
+        except IntegrityError:
+            self.db.rollback()
+            raise
         return gasto
 
     def get(self, gasto_id: int) -> Gasto | None:
@@ -35,8 +40,12 @@ class GastoRepository:
         gasto.data = data
         gasto.usuario_id = usuario_id
         gasto.categoria_id = categoria_id
-        self.db.commit()
-        self.db.refresh(gasto)
+        try:
+            self.db.commit()
+            self.db.refresh(gasto)
+        except IntegrityError:
+            self.db.rollback()
+            raise
         return gasto
 
     def delete(self, gasto: Gasto) -> None:

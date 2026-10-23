@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..entities.usuario import Usuario
@@ -9,9 +10,13 @@ class UsuarioRepository:
         self.db = db
 
     def create(self, usuario: Usuario) -> Usuario:
-        self.db.add(usuario)
-        self.db.commit()
-        self.db.refresh(usuario)
+        try:
+            self.db.add(usuario)
+            self.db.commit()
+            self.db.refresh(usuario)
+        except IntegrityError:
+            self.db.rollback()
+            raise
         return usuario
 
     def get(self, usuario_id: int) -> Usuario | None:
@@ -28,8 +33,12 @@ class UsuarioRepository:
     def update(self, usuario: Usuario, nome: str, email: str) -> Usuario:
         usuario.nome = nome
         usuario.email = email
-        self.db.commit()
-        self.db.refresh(usuario)
+        try:
+            self.db.commit()
+            self.db.refresh(usuario)
+        except IntegrityError:
+            self.db.rollback()
+            raise
         return usuario
 
     def delete(self, usuario: Usuario) -> None:

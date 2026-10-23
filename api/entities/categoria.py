@@ -10,7 +10,7 @@ class Categoria(Base):
     __tablename__ = "categorias"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    nome: Mapped[str] = mapped_column(String, nullable=False)
+    nome: Mapped[str] = mapped_column(String, unique=True, nullable=False)
 
     gastos: Mapped[List["Gasto"]] = relationship(
         back_populates="categoria"

@@ -1,3 +1,5 @@
+from sqlalchemy.exc import IntegrityError
+
 from ..entities.usuario import Usuario
 from ..repositories.usuario_repository import UsuarioRepository
 from ..schemas.usuario_schema import UsuarioCreate, UsuarioUpdate
@@ -27,7 +29,12 @@ class UsuarioService:
                 "Já existe um usuário com este e-mail."
             )
         usuario = Usuario(nome=nome, email=email)
-        return self.repository.create(usuario)
+        try:
+            return self.repository.create(usuario)
+        except IntegrityError as error:
+            raise UsuarioEmailDuplicadoError(
+                "Já existe um usuário com este e-mail."
+            ) from error
 
     def get(self, usuario_id: int) -> Usuario:
         usuario = self.repository.get(usuario_id)
@@ -47,7 +54,12 @@ class UsuarioService:
             raise UsuarioEmailDuplicadoError(
                 "Já existe um usuário com este e-mail."
             )
-        return self.repository.update(usuario, nome, email)
+        try:
+            return self.repository.update(usuario, nome, email)
+        except IntegrityError as error:
+            raise UsuarioEmailDuplicadoError(
+                "Já existe um usuário com este e-mail."
+            ) from error
 
     def delete(self, usuario_id: int) -> None:
         usuario = self.get(usuario_id)

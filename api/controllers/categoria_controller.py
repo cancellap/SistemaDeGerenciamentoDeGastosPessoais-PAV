@@ -8,6 +8,7 @@ from ..schemas.categoria_schema import (
 from ..services.categoria_service import (
     CategoriaComGastosError,
     CategoriaNaoEncontradaError,
+    CategoriaNomeDuplicadoError,
     CategoriaService,
 )
 
@@ -17,7 +18,13 @@ class CategoriaController:
         self.service = service
 
     def create(self, data: CategoriaCreate) -> CategoriaResponse:
-        categoria = self.service.create(data)
+        try:
+            categoria = self.service.create(data)
+        except CategoriaNomeDuplicadoError as error:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(error),
+            ) from error
         return CategoriaResponse.model_validate(categoria)
 
     def get(self, categoria_id: int) -> CategoriaResponse:
@@ -44,6 +51,11 @@ class CategoriaController:
         except CategoriaNaoEncontradaError as error:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(error),
+            ) from error
+        except CategoriaNomeDuplicadoError as error:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
                 detail=str(error),
             ) from error
         return CategoriaResponse.model_validate(categoria)

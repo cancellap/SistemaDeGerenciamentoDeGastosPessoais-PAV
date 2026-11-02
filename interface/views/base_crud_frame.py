@@ -20,6 +20,7 @@ class BaseCrudFrame(ttk.Frame):
         recurso: str,
         colunas: list[str],
         titulos: list[str],
+        nome_entidade: str,
     ):
         super().__init__(master)
 
@@ -31,8 +32,10 @@ class BaseCrudFrame(ttk.Frame):
         self.colunas = colunas
         # Rótulos exibidos no cabeçalho da Treeview.
         self.titulos = titulos
+        # Nome amigável no singular, ex.: "categoria", "usuário".
+        self.nome_entidade = nome_entidade
 
-        # Id do registro selecionado (None = modo "novo").
+        # Id do registro selecionado (None = modo cadastro).
         self.id_atual: int | None = None
 
         # Widgets do formulário: a filha preenche em definir_campos().
@@ -40,10 +43,13 @@ class BaseCrudFrame(ttk.Frame):
 
         self._montar_listagem()
         self._montar_formulario()
+        self._montar_modo()
         self._montar_botoes()
 
         # Carrega os dados assim que a aba aparece.
         self.atualizar_lista()
+        # Começa pronto para cadastrar (sem seleção).
+        self._atualizar_rotulo_modo()
 
     # ------------------------------------------------------------------
     # Montagem visual (comum a todas as entidades)
@@ -83,22 +89,30 @@ class BaseCrudFrame(ttk.Frame):
         # Hook: cada entidade define seus próprios campos.
         self.definir_campos()
 
+    def _montar_modo(self) -> None:
+        """Rótulo que deixa claro se estamos cadastrando ou editando."""
+        self.rotulo_modo = ttk.Label(self, text="")
+        self.rotulo_modo.pack(fill=tk.X, padx=8, pady=(4, 0))
+
     def _montar_botoes(self) -> None:
-        """Botões de ação do CRUD."""
+        """Botões de ação do CRUD (nomes alinhados ao que cada um faz)."""
         frame_botoes = ttk.Frame(self)
         frame_botoes.pack(fill=tk.X, padx=8, pady=8)
 
-        ttk.Button(frame_botoes, text="Novo", command=self.novo).pack(
+        # Limpar: só esvazia o formulário (não grava nada na API).
+        ttk.Button(frame_botoes, text="Limpar", command=self.limpar).pack(
             side=tk.LEFT, padx=4
         )
+        # Salvar: POST (novo) ou PUT (edição), conforme o modo.
         ttk.Button(frame_botoes, text="Salvar", command=self.salvar).pack(
             side=tk.LEFT, padx=4
         )
         ttk.Button(frame_botoes, text="Excluir", command=self.excluir).pack(
             side=tk.LEFT, padx=4
         )
+        # Atualizar lista: refaz o GET; não altera o registro do formulário.
         ttk.Button(
-            frame_botoes, text="Atualizar", command=self.atualizar_lista
+            frame_botoes, text="Atualizar lista", command=self.atualizar_lista
         ).pack(side=tk.LEFT, padx=4)
 
     # ------------------------------------------------------------------
@@ -122,8 +136,24 @@ class BaseCrudFrame(ttk.Frame):
         raise NotImplementedError
 
     def limpar_formulario(self) -> None:
-        """Esvazia os campos (modo 'novo')."""
+        """Esvazia os campos (modo cadastro)."""
         raise NotImplementedError
+
+    def descricao_registro(self) -> str:
+        """Texto amigável do registro em edição (ex.: nome)."""
+        raise NotImplementedError
+
+    def _atualizar_rotulo_modo(self) -> None:
+        """Mostra se o Salvar vai criar ou alterar."""
+        if self.id_atual is None:
+            texto = f"Modo: novo cadastro de {self.nome_entidade}"
+        else:
+            # Usa o nome (ou outra descrição), não o ID técnico.
+            texto = (
+                f"Modo: editando {self.nome_entidade} "
+                f"{self.descricao_registro()}"
+            )
+        self.rotulo_modo.config(text=texto)
 
     def valores_da_linha(self, registro: dict) -> tuple:
         """Converte um registro JSON na tupla exibida na Treeview."""
@@ -153,11 +183,12 @@ class BaseCrudFrame(ttk.Frame):
                 values=self.valores_da_linha(registro),
             )
 
-    def novo(self) -> None:
-        """Prepara o formulário para cadastrar um novo registro."""
+    def limpar(self) -> None:
+        """Esvazia o formulário e volta ao modo de novo cadastro."""
         self.id_atual = None
         self.tree.selection_remove(self.tree.selection())
         self.limpar_formulario()
+        self._atualizar_rotulo_modo()
 
     def salvar(self) -> None:
         """Cria (POST) ou atualiza (PUT) conforme self.id_atual."""
@@ -181,7 +212,7 @@ class BaseCrudFrame(ttk.Frame):
             return
 
         self.atualizar_lista()
-        self.novo()
+        self.limpar()
 
     def excluir(self) -> None:
         """Exclui o registro selecionado, com confirmação."""
@@ -206,7 +237,7 @@ class BaseCrudFrame(ttk.Frame):
             return
 
         self.atualizar_lista()
-        self.novo()
+        self.limpar()
 
     def _ao_selecionar(self, _evento=None) -> None:
         """Quando o usuário clica numa linha, preenche o formulário."""
@@ -223,7 +254,8 @@ class BaseCrudFrame(ttk.Frame):
             # Ex.: registro excluído por outro lado.
             messagebox.showerror("Erro", erro.mensagem)
             self.atualizar_lista()
-            self.novo()
+            self.limpar()
             return
 
         self.preencher_formulario(registro)
+        self._atualizar_rotulo_modo()

@@ -109,6 +109,11 @@ class GastoFrame(BaseCrudFrame):
         except ValueError:
             return "Data inválida. Use o formato DD/MM/AAAA."
 
+        # Sem cadastros prévios, o Combobox fica vazio — mensagem mais clara.
+        if not self.combo_usuario["values"]:
+            return "Cadastre um usuário antes de criar um gasto."
+        if not self.combo_categoria["values"]:
+            return "Cadastre uma categoria antes de criar um gasto."
         if not self.combo_usuario.get():
             return "Selecione um usuário."
         if not self.combo_categoria.get():
@@ -128,8 +133,9 @@ class GastoFrame(BaseCrudFrame):
 
     def preencher_formulario(self, registro: dict) -> None:
         """Copia o gasto da API para o formulário (formatos BR)."""
-        # Garante Combobox atualizados antes de selecionar.
-        self._carregar_combos()
+        # Sem Combobox atualizados, não dá para selecionar usuário/categoria.
+        if not self._carregar_combos():
+            return
         self.limpar_formulario()
 
         self.entrada_descricao.insert(0, registro.get("descricao", ""))

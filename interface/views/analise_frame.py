@@ -19,8 +19,7 @@ class AnaliseFrame(ttk.Frame):
         self._montar_anomalias()
         self._montar_botao()
 
-        # Carrega os números ao abrir a aba.
-        self.atualizar()
+        # Dados carregados em ao_exibir() quando a aba é selecionada.
 
     def _montar_resumo(self) -> None:
         """Labels de total e média."""
@@ -72,6 +71,10 @@ class AnaliseFrame(ttk.Frame):
         ttk.Button(self, text="Atualizar análises", command=self.atualizar).pack(
             padx=8, pady=8
         )
+
+    def ao_exibir(self) -> None:
+        """Chamado pela janela principal quando a aba fica visível."""
+        self.atualizar()
 
     def atualizar(self) -> None:
         """Chama os 4 endpoints e preenche a tela."""

@@ -46,9 +46,8 @@ class BaseCrudFrame(ttk.Frame):
         self._montar_modo()
         self._montar_botoes()
 
-        # Carrega os dados assim que a aba aparece.
-        self.atualizar_lista()
-        # Começa pronto para cadastrar (sem seleção).
+        # Lista é carregada em ao_exibir() (quando a aba é selecionada),
+        # para não abrir vários popups se a API estiver fora no start.
         self._atualizar_rotulo_modo()
 
     # ------------------------------------------------------------------
@@ -163,6 +162,10 @@ class BaseCrudFrame(ttk.Frame):
     # Ações do CRUD
     # ------------------------------------------------------------------
 
+    def ao_exibir(self) -> None:
+        """Chamado pela janela principal quando a aba fica visível."""
+        self.atualizar_lista()
+
     def atualizar_lista(self) -> None:
         """Busca todos os registros na API e redesenha a Treeview."""
         try:
@@ -207,8 +210,12 @@ class BaseCrudFrame(ttk.Frame):
                 self.api.atualizar(self.recurso, self.id_atual, dados)
                 messagebox.showinfo("Sucesso", "Registro atualizado.")
         except ApiError as erro:
-            # Sempre mostra também o erro que a API devolveu.
+            # Sempre mostra o erro que a API devolveu (regra de negócio).
             messagebox.showerror("Erro", erro.mensagem)
+            # Se o registro sumiu (404), alinha a tela com o banco.
+            if "não encontrad" in erro.mensagem.lower():
+                self.atualizar_lista()
+                self.limpar()
             return
 
         self.atualizar_lista()
@@ -234,6 +241,10 @@ class BaseCrudFrame(ttk.Frame):
             messagebox.showinfo("Sucesso", "Registro excluído.")
         except ApiError as erro:
             messagebox.showerror("Erro", erro.mensagem)
+            # 404: já não existe; 409: vinculado — só limpa a seleção no 404.
+            if "não encontrad" in erro.mensagem.lower():
+                self.atualizar_lista()
+                self.limpar()
             return
 
         self.atualizar_lista()

@@ -62,8 +62,8 @@ class ApiClient:
                 json=json,
                 timeout=self.timeout,
             )
-        except (requests.ConnectionError, requests.Timeout) as erro:
-            # API fora do ar ou demorando demais: janela não deve travar.
+        except requests.RequestException as erro:
+            # Conexão, timeout ou outra falha de rede: janela não trava.
             raise ApiError("Não foi possível conectar à API.") from erro
 
         if resposta.ok:
@@ -121,9 +121,13 @@ class ApiClient:
             for item in detalhe:
                 if isinstance(item, dict):
                     # Preferimos "msg"; se não houver, usamos o item inteiro.
-                    mensagens.append(str(item.get("msg", item)))
+                    mensagem = str(item.get("msg", item))
                 else:
-                    mensagens.append(str(item))
+                    mensagem = str(item)
+                # Pydantic v2 prefixa com "Value error, "; removemos para ficar legível.
+                if mensagem.startswith("Value error, "):
+                    mensagem = mensagem[len("Value error, ") :]
+                mensagens.append(mensagem)
             return " ".join(mensagens)
 
         return str(detalhe) if detalhe else ""

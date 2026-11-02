@@ -22,10 +22,28 @@ class MainWindow(tk.Tk):
         # Um único client HTTP compartilhado por todas as abas.
         self.api = ApiClient()
 
-        notebook = ttk.Notebook(self)
-        notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
-        notebook.add(CategoriaFrame(notebook, self.api), text="Categorias")
-        notebook.add(UsuarioFrame(notebook, self.api), text="Usuários")
-        notebook.add(GastoFrame(notebook, self.api), text="Gastos")
-        notebook.add(AnaliseFrame(notebook, self.api), text="Análises")
+        self.notebook.add(CategoriaFrame(self.notebook, self.api), text="Categorias")
+        self.notebook.add(UsuarioFrame(self.notebook, self.api), text="Usuários")
+        self.notebook.add(GastoFrame(self.notebook, self.api), text="Gastos")
+        self.notebook.add(AnaliseFrame(self.notebook, self.api), text="Análises")
+
+        # Ao trocar de aba, recarrega os dados da aba visível.
+        self.notebook.bind("<<NotebookTabChanged>>", self._ao_mudar_aba)
+        # Garante o primeiro carregamento da aba inicial.
+        self._carregar_aba_atual()
+
+    def _ao_mudar_aba(self, _evento=None) -> None:
+        """Dispara o carregamento da aba selecionada."""
+        self._carregar_aba_atual()
+
+    def _carregar_aba_atual(self) -> None:
+        """Chama ao_exibir() da aba ativa (se existir)."""
+        aba_id = self.notebook.select()
+        if not aba_id:
+            return
+        aba = self.notebook.nametowidget(aba_id)
+        if hasattr(aba, "ao_exibir"):
+            aba.ao_exibir()

@@ -19,15 +19,19 @@ class CategoriaFrame(BaseCrudFrame):
             colunas=["id", "nome"],
             titulos=["ID", "Nome"],
             nome_entidade="categoria",
+            titulo_lista="Categorias",
+            genero="a",
         )
 
     def definir_campos(self) -> None:
         """Um único campo: nome da categoria."""
-        ttk.Label(self.frame_form, text="Nome:").grid(
-            row=0, column=0, sticky=tk.W, padx=4, pady=4
+        ttk.Label(self.frame_form, text="Nome:", style="Card.TLabel").grid(
+            row=0, column=0, sticky=tk.W, padx=(4, 12), pady=8
         )
-        self.entrada_nome = ttk.Entry(self.frame_form, width=40)
-        self.entrada_nome.grid(row=0, column=1, sticky=tk.W, padx=4, pady=4)
+        self.entrada_nome = ttk.Entry(self.frame_form, width=42)
+        self.entrada_nome.grid(
+            row=0, column=1, sticky=tk.EW, padx=(0, 4), pady=8
+        )
         self.campos["nome"] = self.entrada_nome
 
     def validar(self) -> str | None:

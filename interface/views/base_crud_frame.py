@@ -1,17 +1,26 @@
-"""Frame base de CRUD: listagem + formulário + botões.
-
-As subclasses (Categoria, Usuario, Gasto) só sobrescrevem os métodos
-marcados abaixo; o fluxo de salvar/excluir/atualizar fica aqui.
-"""
+"""Frame base de CRUD: listagem com ações + modais de cadastro/edição."""
 
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import ttk
 
 from interface.client.api_client import ApiClient, ApiError
+from interface.widgets import (
+    AreaRolavel,
+    ModalFormulario,
+    Secao,
+    ajustar_altura_lista,
+    configurar_acoes_lista,
+    confirmar_acao,
+    criar_lista_moderna,
+    inserir_linha_lista,
+    mostrar_alerta,
+    mostrar_erro,
+    mostrar_sucesso,
+)
 
 
 class BaseCrudFrame(ttk.Frame):
-    """Tela genérica de cadastro/consulta/edição/exclusão."""
+    """Tela genérica: lista + (＋ / caneta / lixeira) abrem modais."""
 
     def __init__(
         self,
@@ -21,252 +30,196 @@ class BaseCrudFrame(ttk.Frame):
         colunas: list[str],
         titulos: list[str],
         nome_entidade: str,
+        titulo_lista: str,
+        genero: str = "a",
     ):
         super().__init__(master)
 
-        # Client HTTP compartilhado pela janela principal.
         self.api = api_client
-        # Nome do recurso na API, ex.: "categorias".
         self.recurso = recurso
-        # Nomes dos campos do JSON (ex.: ["id", "nome"]).
         self.colunas = colunas
-        # Rótulos exibidos no cabeçalho da Treeview.
         self.titulos = titulos
-        # Nome amigável no singular, ex.: "categoria", "usuário".
         self.nome_entidade = nome_entidade
+        self.titulo_lista = titulo_lista
+        self.genero = genero
 
-        # Id do registro selecionado (None = modo cadastro).
         self.id_atual: int | None = None
-
-        # Widgets do formulário: a filha preenche em definir_campos().
         self.campos: dict[str, tk.Widget] = {}
+        self.frame_form = None
+        self._modal: ModalFormulario | None = None
+
+        self.area = AreaRolavel(self)
+        self.area.pack(fill=tk.BOTH, expand=True)
+        self._raiz = self.area.corpo
 
         self._montar_listagem()
-        self._montar_formulario()
-        self._montar_modo()
-        self._montar_botoes()
+        self.area.ativar_rodinha_em_arvore(self._raiz)
 
-        # Lista é carregada em ao_exibir() (quando a aba é selecionada),
-        # para não abrir vários popups se a API estiver fora no start.
-        self._atualizar_rotulo_modo()
+    def _titulo_formulario(self) -> str:
+        if self.id_atual is None:
+            artigo = "nova" if self.genero == "a" else "novo"
+            return f"Cadastrar {artigo} {self.nome_entidade}"
+        return f"Editar {self.nome_entidade}"
 
-    # ------------------------------------------------------------------
-    # Montagem visual (comum a todas as entidades)
-    # ------------------------------------------------------------------
+    def _janela(self):
+        return self.winfo_toplevel()
 
     def _montar_listagem(self) -> None:
-        """Cria a Treeview com as colunas da entidade."""
-        frame_lista = ttk.Frame(self)
-        frame_lista.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
-
-        self.tree = ttk.Treeview(
-            frame_lista,
-            columns=self.colunas,
-            show="headings",
-            height=10,
+        secao = Secao(
+            self._raiz,
+            self.titulo_lista,
+            ao_adicionar=self.abrir_cadastro,
+            texto_adicionar="Cadastrar",
+            ao_atualizar=self.atualizar_lista,
         )
-        for coluna, titulo in zip(self.colunas, self.titulos):
-            self.tree.heading(coluna, text=titulo)
-            self.tree.column(coluna, width=120, anchor=tk.W)
+        secao.pack(fill=tk.X, padx=20, pady=(12, 24))
 
-        # Barra de rolagem vertical.
-        scroll = ttk.Scrollbar(
-            frame_lista, orient=tk.VERTICAL, command=self.tree.yview
+        flexivel = "email" if "email" in self.colunas else (
+            "nome" if "nome" in self.colunas else self.colunas[-1]
         )
-        self.tree.configure(yscrollcommand=scroll.set)
-
-        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scroll.pack(side=tk.RIGHT, fill=tk.Y)
-
-        # Clique na linha -> preenche o formulário.
-        self.tree.bind("<<TreeviewSelect>>", self._ao_selecionar)
-
-    def _montar_formulario(self) -> None:
-        """Área do formulário; a filha cria os Entry/Combobox."""
-        self.frame_form = ttk.LabelFrame(self, text="Formulário")
-        self.frame_form.pack(fill=tk.X, padx=8, pady=4)
-        # Hook: cada entidade define seus próprios campos.
-        self.definir_campos()
-
-    def _montar_modo(self) -> None:
-        """Rótulo que deixa claro se estamos cadastrando ou editando."""
-        self.rotulo_modo = ttk.Label(self, text="")
-        self.rotulo_modo.pack(fill=tk.X, padx=8, pady=(4, 0))
-
-    def _montar_botoes(self) -> None:
-        """Botões de ação do CRUD (nomes alinhados ao que cada um faz)."""
-        frame_botoes = ttk.Frame(self)
-        frame_botoes.pack(fill=tk.X, padx=8, pady=8)
-
-        # Limpar: só esvazia o formulário (não grava nada na API).
-        ttk.Button(frame_botoes, text="Limpar", command=self.limpar).pack(
-            side=tk.LEFT, padx=4
+        self.tree = criar_lista_moderna(
+            secao.corpo,
+            colunas=self.colunas,
+            titulos=self.titulos,
+            altura=1,
+            com_acoes=True,
+            coluna_flexivel=flexivel,
         )
-        # Salvar: POST (novo) ou PUT (edição), conforme o modo.
-        ttk.Button(frame_botoes, text="Salvar", command=self.salvar).pack(
-            side=tk.LEFT, padx=4
+        configurar_acoes_lista(
+            self.tree,
+            ao_editar=self.abrir_edicao,
+            ao_excluir=self.confirmar_exclusao,
         )
-        ttk.Button(frame_botoes, text="Excluir", command=self.excluir).pack(
-            side=tk.LEFT, padx=4
-        )
-        # Atualizar lista: refaz o GET; não altera o registro do formulário.
-        ttk.Button(
-            frame_botoes, text="Atualizar lista", command=self.atualizar_lista
-        ).pack(side=tk.LEFT, padx=4)
-
-    # ------------------------------------------------------------------
-    # Métodos que as subclasses DEVEM sobrescrever
-    # ------------------------------------------------------------------
 
     def definir_campos(self) -> None:
-        """Cria os widgets do formulário dentro de self.frame_form."""
         raise NotImplementedError
 
     def validar(self) -> str | None:
-        """Validação no cliente. Retorna mensagem de erro ou None."""
         raise NotImplementedError
 
     def montar_payload(self) -> dict:
-        """Monta o dicionário JSON enviado no POST/PUT."""
         raise NotImplementedError
 
     def preencher_formulario(self, registro: dict) -> None:
-        """Copia os dados do registro selecionado para o formulário."""
         raise NotImplementedError
 
     def limpar_formulario(self) -> None:
-        """Esvazia os campos (modo cadastro)."""
         raise NotImplementedError
 
     def descricao_registro(self) -> str:
-        """Texto amigável do registro em edição (ex.: nome)."""
-        raise NotImplementedError
-
-    def _atualizar_rotulo_modo(self) -> None:
-        """Mostra se o Salvar vai criar ou alterar."""
-        if self.id_atual is None:
-            texto = f"Modo: novo cadastro de {self.nome_entidade}"
-        else:
-            # Aspas deixam o nome do registro mais fácil de ler.
-            texto = (
-                f'Modo: editando {self.nome_entidade} '
-                f'"{self.descricao_registro()}"'
-            )
-        self.rotulo_modo.config(text=texto)
+        return ""
 
     def valores_da_linha(self, registro: dict) -> tuple:
-        """Converte um registro JSON na tupla exibida na Treeview."""
         return tuple(registro.get(coluna, "") for coluna in self.colunas)
 
-    # ------------------------------------------------------------------
-    # Ações do CRUD
-    # ------------------------------------------------------------------
+    def preparar_formulario(self) -> bool:
+        return True
 
     def ao_exibir(self) -> None:
-        """Chamado pela janela principal quando a aba fica visível."""
         self.atualizar_lista()
 
     def atualizar_lista(self) -> None:
-        """Busca todos os registros na API e redesenha a Treeview."""
         try:
             registros = self.api.listar(self.recurso)
         except ApiError as erro:
-            messagebox.showerror("Erro", erro.mensagem)
+            mostrar_erro(self._janela(), erro.mensagem)
             return
 
-        # Limpa linhas antigas.
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        for registro in registros:
-            self.tree.insert(
-                "",
-                tk.END,
+        for indice, registro in enumerate(registros):
+            inserir_linha_lista(
+                self.tree,
+                self.valores_da_linha(registro),
                 iid=str(registro["id"]),
-                values=self.valores_da_linha(registro),
+                indice=indice,
             )
 
-    def limpar(self) -> None:
-        """Esvazia o formulário e volta ao modo de novo cadastro."""
-        self.id_atual = None
-        self.tree.selection_remove(self.tree.selection())
-        self.limpar_formulario()
-        self._atualizar_rotulo_modo()
+        ajustar_altura_lista(self.tree, len(registros))
 
-    def salvar(self) -> None:
-        """Cria (POST) ou atualiza (PUT) conforme self.id_atual."""
-        # Validação local antes de chamar a API.
+    def abrir_cadastro(self) -> None:
+        self.id_atual = None
+        self._abrir_modal()
+
+    def abrir_edicao(self, id_registro: int) -> None:
+        self.id_atual = id_registro
+        try:
+            registro = self.api.buscar(self.recurso, id_registro)
+        except ApiError as erro:
+            mostrar_erro(self._janela(), erro.mensagem)
+            self.atualizar_lista()
+            return
+        self._abrir_modal(registro)
+
+    def _abrir_modal(self, registro: dict | None = None) -> None:
+        if self._modal is not None and self._modal.winfo_exists():
+            self._modal.lift()
+            return
+
+        if not self.preparar_formulario():
+            return
+
+        modal = ModalFormulario(
+            self._janela(),
+            titulo=self._titulo_formulario(),
+            ao_salvar=self._salvar_modal,
+        )
+        self._modal = modal
+        self.frame_form = modal.corpo
+        self.definir_campos()
+
+        if registro is None:
+            self.limpar_formulario()
+        else:
+            self.preencher_formulario(registro)
+
+        modal.focus_set()
+
+    def _salvar_modal(self, modal: ModalFormulario) -> None:
         mensagem_erro = self.validar()
         if mensagem_erro:
-            messagebox.showwarning("Dados inválidos", mensagem_erro)
+            mostrar_alerta(modal, mensagem_erro, titulo="Dados inválidos")
             return
 
         try:
             dados = self.montar_payload()
             if self.id_atual is None:
                 self.api.criar(self.recurso, dados)
-                messagebox.showinfo("Sucesso", "Registro criado.")
+                mostrar_sucesso(modal, "Registro criado.")
             else:
                 self.api.atualizar(self.recurso, self.id_atual, dados)
-                messagebox.showinfo("Sucesso", "Registro atualizado.")
+                mostrar_sucesso(modal, "Registro atualizado.")
         except ApiError as erro:
-            # Sempre mostra o erro que a API devolveu (regra de negócio).
-            messagebox.showerror("Erro", erro.mensagem)
-            # Se o registro sumiu (404), alinha a tela com o banco.
+            mostrar_erro(modal, erro.mensagem)
             if "não encontrad" in erro.mensagem.lower():
+                modal.destroy()
+                self._modal = None
+                self.id_atual = None
                 self.atualizar_lista()
-                self.limpar()
             return
 
+        modal.destroy()
+        self._modal = None
+        self.id_atual = None
         self.atualizar_lista()
-        self.limpar()
 
-    def excluir(self) -> None:
-        """Exclui o registro selecionado, com confirmação."""
-        if self.id_atual is None:
-            messagebox.showwarning(
-                "Atenção", "Selecione um registro para excluir."
-            )
-            return
-
-        confirmar = messagebox.askyesno(
-            "Confirmar exclusão",
-            "Deseja realmente excluir este registro?",
+    def confirmar_exclusao(self, id_registro: int) -> None:
+        ok = confirmar_acao(
+            self._janela(),
+            f"Deseja realmente excluir este {self.nome_entidade}?",
+            titulo="Confirmar exclusão",
         )
-        if not confirmar:
+        if not ok:
             return
 
         try:
-            self.api.excluir(self.recurso, self.id_atual)
-            messagebox.showinfo("Sucesso", "Registro excluído.")
+            self.api.excluir(self.recurso, id_registro)
+            mostrar_sucesso(self._janela(), "Registro excluído.")
         except ApiError as erro:
-            messagebox.showerror("Erro", erro.mensagem)
-            # 404: já não existe; 409: vinculado — só limpa a seleção no 404.
+            mostrar_erro(self._janela(), erro.mensagem)
             if "não encontrad" in erro.mensagem.lower():
                 self.atualizar_lista()
-                self.limpar()
             return
 
         self.atualizar_lista()
-        self.limpar()
-
-    def _ao_selecionar(self, _evento=None) -> None:
-        """Quando o usuário clica numa linha, preenche o formulário."""
-        selecionados = self.tree.selection()
-        if not selecionados:
-            return
-
-        id_texto = selecionados[0]
-        self.id_atual = int(id_texto)
-
-        try:
-            registro = self.api.buscar(self.recurso, self.id_atual)
-        except ApiError as erro:
-            # Ex.: registro excluído por outro lado.
-            messagebox.showerror("Erro", erro.mensagem)
-            self.atualizar_lista()
-            self.limpar()
-            return
-
-        self.preencher_formulario(registro)
-        self._atualizar_rotulo_modo()

@@ -1,13 +1,21 @@
-"""Janela principal com abas (Notebook) para cada módulo."""
+"""Janela principal com abas em formato de pílula."""
 
 import tkinter as tk
-from tkinter import ttk
 
 from interface.client.api_client import ApiClient
+from interface.tema import (
+    COR_CABECALHO,
+    COR_CABECALHO_SUB,
+    COR_CABECALHO_TEXTO,
+    COR_DESTAQUE,
+    aplicar_tema,
+    fonte,
+)
 from interface.views.analise_frame import AnaliseFrame
 from interface.views.categoria_frame import CategoriaFrame
 from interface.views.gasto_frame import GastoFrame
 from interface.views.usuario_frame import UsuarioFrame
+from interface.widgets import NavegacaoAbas
 
 
 class MainWindow(tk.Tk):
@@ -17,33 +25,57 @@ class MainWindow(tk.Tk):
         super().__init__()
 
         self.title("Análise de Gastos Pessoais")
-        self.geometry("800x620")
+        self.geometry("960x720")
+        self.minsize(820, 580)
+
+        # Tema visual aplicado uma vez na janela raiz.
+        aplicar_tema(self)
 
         # Um único client HTTP compartilhado por todas as abas.
         self.api = ApiClient()
 
-        self.notebook = ttk.Notebook(self)
-        self.notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        self._montar_cabecalho()
 
-        self.notebook.add(CategoriaFrame(self.notebook, self.api), text="Categorias")
-        self.notebook.add(UsuarioFrame(self.notebook, self.api), text="Usuários")
-        self.notebook.add(GastoFrame(self.notebook, self.api), text="Gastos")
-        self.notebook.add(AnaliseFrame(self.notebook, self.api), text="Análises")
+        # Abas próprias (pílulas) — sem o Notebook do ttk que “encolhe”.
+        self.navegacao = NavegacaoAbas(self)
+        self.navegacao.pack(fill=tk.BOTH, expand=True, padx=20, pady=(16, 20))
 
-        # Ao trocar de aba, recarrega os dados da aba visível.
-        self.notebook.bind("<<NotebookTabChanged>>", self._ao_mudar_aba)
-        # Garante o primeiro carregamento da aba inicial.
-        self._carregar_aba_atual()
+        self.navegacao.adicionar(
+            "Categorias", CategoriaFrame(self.navegacao.area, self.api)
+        )
+        self.navegacao.adicionar(
+            "Usuários", UsuarioFrame(self.navegacao.area, self.api)
+        )
+        self.navegacao.adicionar(
+            "Gastos", GastoFrame(self.navegacao.area, self.api)
+        )
+        self.navegacao.adicionar(
+            "Análises", AnaliseFrame(self.navegacao.area, self.api)
+        )
+        self.navegacao.mostrar_primeira()
 
-    def _ao_mudar_aba(self, _evento=None) -> None:
-        """Dispara o carregamento da aba selecionada."""
-        self._carregar_aba_atual()
+    def _montar_cabecalho(self) -> None:
+        """Cabeçalho em destaque (fundo teal)."""
+        cabecalho = tk.Frame(self, bg=COR_CABECALHO)
+        cabecalho.pack(fill=tk.X)
 
-    def _carregar_aba_atual(self) -> None:
-        """Chama ao_exibir() da aba ativa (se existir)."""
-        aba_id = self.notebook.select()
-        if not aba_id:
-            return
-        aba = self.notebook.nametowidget(aba_id)
-        if hasattr(aba, "ao_exibir"):
-            aba.ao_exibir()
+        tk.Label(
+            cabecalho,
+            text="Análise de Gastos Pessoais",
+            bg=COR_CABECALHO,
+            fg=COR_CABECALHO_TEXTO,
+            font=fonte(20, True),
+            anchor=tk.W,
+        ).pack(anchor=tk.W, padx=24, pady=(18, 2))
+
+        tk.Label(
+            cabecalho,
+            text="Cadastre usuários, categorias e gastos - e acompanhe as análises.",
+            bg=COR_CABECALHO,
+            fg=COR_CABECALHO_SUB,
+            font=fonte(10),
+            anchor=tk.W,
+        ).pack(anchor=tk.W, padx=24, pady=(0, 18))
+
+        # Detalhe mais escuro na base do cabeçalho.
+        tk.Frame(self, bg=COR_DESTAQUE, height=2).pack(fill=tk.X)

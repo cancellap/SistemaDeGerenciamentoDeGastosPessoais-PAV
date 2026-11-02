@@ -22,21 +22,27 @@ class UsuarioFrame(BaseCrudFrame):
             colunas=["id", "nome", "email"],
             titulos=["ID", "Nome", "E-mail"],
             nome_entidade="usuário",
+            titulo_lista="Usuários",
+            genero="o",
         )
 
     def definir_campos(self) -> None:
         """Campos nome e e-mail."""
-        ttk.Label(self.frame_form, text="Nome:").grid(
-            row=0, column=0, sticky=tk.W, padx=4, pady=4
+        ttk.Label(self.frame_form, text="Nome:", style="Card.TLabel").grid(
+            row=0, column=0, sticky=tk.W, padx=(4, 12), pady=8
         )
-        self.entrada_nome = ttk.Entry(self.frame_form, width=40)
-        self.entrada_nome.grid(row=0, column=1, sticky=tk.W, padx=4, pady=4)
+        self.entrada_nome = ttk.Entry(self.frame_form, width=42)
+        self.entrada_nome.grid(
+            row=0, column=1, sticky=tk.EW, padx=(0, 4), pady=8
+        )
 
-        ttk.Label(self.frame_form, text="E-mail:").grid(
-            row=1, column=0, sticky=tk.W, padx=4, pady=4
+        ttk.Label(self.frame_form, text="E-mail:", style="Card.TLabel").grid(
+            row=1, column=0, sticky=tk.W, padx=(4, 12), pady=8
         )
-        self.entrada_email = ttk.Entry(self.frame_form, width=40)
-        self.entrada_email.grid(row=1, column=1, sticky=tk.W, padx=4, pady=4)
+        self.entrada_email = ttk.Entry(self.frame_form, width=42)
+        self.entrada_email.grid(
+            row=1, column=1, sticky=tk.EW, padx=(0, 4), pady=8
+        )
 
         self.campos["nome"] = self.entrada_nome
         self.campos["email"] = self.entrada_email

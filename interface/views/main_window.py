@@ -5,6 +5,7 @@ from tkinter import ttk
 
 from interface.client.api_client import ApiClient
 from interface.views.categoria_frame import CategoriaFrame
+from interface.views.gasto_frame import GastoFrame
 from interface.views.usuario_frame import UsuarioFrame
 
 
@@ -25,7 +26,7 @@ class MainWindow(tk.Tk):
 
         notebook.add(CategoriaFrame(notebook, self.api), text="Categorias")
         notebook.add(UsuarioFrame(notebook, self.api), text="Usuários")
-        notebook.add(self._aba_placeholder("Gastos"), text="Gastos")
+        notebook.add(GastoFrame(notebook, self.api), text="Gastos")
         notebook.add(self._aba_placeholder("Análises"), text="Análises")
 
     def _aba_placeholder(self, nome: str) -> ttk.Frame:

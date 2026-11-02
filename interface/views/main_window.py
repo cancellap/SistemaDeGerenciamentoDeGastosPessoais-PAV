@@ -5,6 +5,7 @@ from tkinter import ttk
 
 from interface.client.api_client import ApiClient
 from interface.views.categoria_frame import CategoriaFrame
+from interface.views.usuario_frame import UsuarioFrame
 
 
 class MainWindow(tk.Tk):
@@ -22,9 +23,8 @@ class MainWindow(tk.Tk):
         notebook = ttk.Notebook(self)
         notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
-        # Categorias já tem CRUD completo; as demais abas vêm nas próximas fases.
         notebook.add(CategoriaFrame(notebook, self.api), text="Categorias")
-        notebook.add(self._aba_placeholder("Usuários"), text="Usuários")
+        notebook.add(UsuarioFrame(notebook, self.api), text="Usuários")
         notebook.add(self._aba_placeholder("Gastos"), text="Gastos")
         notebook.add(self._aba_placeholder("Análises"), text="Análises")
 

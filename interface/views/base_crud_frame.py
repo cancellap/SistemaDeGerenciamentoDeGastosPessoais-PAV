@@ -148,10 +148,10 @@ class BaseCrudFrame(ttk.Frame):
         if self.id_atual is None:
             texto = f"Modo: novo cadastro de {self.nome_entidade}"
         else:
-            # Usa o nome (ou outra descrição), não o ID técnico.
+            # Aspas deixam o nome do registro mais fácil de ler.
             texto = (
-                f"Modo: editando {self.nome_entidade} "
-                f"{self.descricao_registro()}"
+                f'Modo: editando {self.nome_entidade} '
+                f'"{self.descricao_registro()}"'
             )
         self.rotulo_modo.config(text=texto)
 

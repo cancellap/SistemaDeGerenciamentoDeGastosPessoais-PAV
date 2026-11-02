@@ -25,12 +25,17 @@ COR_BLOCO = "#F0FDFA"
 # Preferência de fonte no estilo da referência (Inter/Poppins).
 # Se não estiver instalada, cai para Segoe UI.
 FAMILIA_FONTE = "Segoe UI"
+# Incremento leve sobre os tamanhos de design (legibilidade).
+AJUSTE_TAMANHO_FONTE = 1
+# Altura de cada linha da Treeview (botões de ação usam o mesmo valor).
+ALTURA_LINHA_LISTA = 40
+
 
 
 def fonte(tamanho: int = 10, negrito: bool = False):
     """Monta a tupla de fonte usada em toda a interface."""
     peso = "bold" if negrito else "normal"
-    return (FAMILIA_FONTE, tamanho, peso)
+    return (FAMILIA_FONTE, tamanho + AJUSTE_TAMANHO_FONTE, peso)
 
 
 def _escolher_familia_fonte() -> str:
@@ -125,8 +130,9 @@ def aplicar_tema(janela) -> None:
         background=COR_LISTA_FUNDO,
         fieldbackground=COR_LISTA_FUNDO,
         foreground=COR_TEXTO,
-        rowheight=36,
+        rowheight=ALTURA_LINHA_LISTA,
         font=fonte(10),
+
         borderwidth=0,
         relief="flat",
         highlightthickness=0,

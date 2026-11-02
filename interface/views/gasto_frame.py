@@ -31,7 +31,7 @@ class GastoFrame(BaseCrudFrame):
     # Colunas da tabela interna (sem "usuário": já está no card).
     COLUNAS_LISTA = ["id", "descricao", "valor", "data", "categoria"]
     TITULOS_LISTA = ["ID", "Descrição", "Valor", "Data", "Categoria"]
-    LARGURAS_LISTA = [48, 180, 88, 102, 150]
+    LARGURAS_LISTA = [48, 160, 88, 102, 220]
 
     def __init__(self, master, api_client: ApiClient):
         # Mapas id -> nome, usados na lista e nos Combobox.
@@ -89,8 +89,8 @@ class GastoFrame(BaseCrudFrame):
         )
 
     def preparar_formulario(self) -> bool:
-        """Garante Combobox de usuário/categoria antes de abrir o modal."""
-        return self._carregar_combos()
+        """Só carrega os mapas; Combobox ainda não existem (modal novo)."""
+        return self._carregar_mapas()
 
     def definir_campos(self) -> None:
         """Campos do gasto + selects de usuário e categoria."""
@@ -138,6 +138,9 @@ class GastoFrame(BaseCrudFrame):
         self.combo_categoria.grid(
             row=4, column=1, sticky=tk.EW, padx=(0, 4), pady=6
         )
+
+        # Preenche opções depois de criar os widgets do modal atual.
+        self._aplicar_valores_combos()
 
     def validar(self) -> str | None:
         """Valida no cliente antes do POST/PUT."""
@@ -345,13 +348,15 @@ class GastoFrame(BaseCrudFrame):
         }
         return True
 
-    def _carregar_combos(self) -> bool:
-        """Busca usuários/categorias e preenche os Combobox do modal."""
-        if not self._carregar_mapas():
-            return False
-
+    def _aplicar_valores_combos(self) -> None:
+        """Preenche os Combobox do modal aberto (nunca os de um modal antigo)."""
         if not hasattr(self, "combo_usuario"):
-            return True
+            return
+        try:
+            if not self.combo_usuario.winfo_exists():
+                return
+        except tk.TclError:
+            return
 
         self.combo_usuario["values"] = [
             self._texto_combo(item_id, self.usuarios_por_id)
@@ -361,6 +366,12 @@ class GastoFrame(BaseCrudFrame):
             self._texto_combo(item_id, self.categorias_por_id)
             for item_id in self.categorias_por_id
         ]
+
+    def _carregar_combos(self) -> bool:
+        """Busca usuários/categorias e preenche Combobox, se existirem."""
+        if not self._carregar_mapas():
+            return False
+        self._aplicar_valores_combos()
         return True
 
     def _texto_combo(self, item_id: int | None, mapa: dict[int, str]) -> str:

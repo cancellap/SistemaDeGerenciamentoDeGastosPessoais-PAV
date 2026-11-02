@@ -164,6 +164,7 @@ class BaseCrudFrame(ttk.Frame):
             self._janela(),
             titulo=self._titulo_formulario(),
             ao_salvar=self._salvar_modal,
+            ao_cancelar=self._ao_fechar_modal,
         )
         self._modal = modal
         self.frame_form = modal.corpo
@@ -175,6 +176,9 @@ class BaseCrudFrame(ttk.Frame):
             self.preencher_formulario(registro)
 
         modal.focus_set()
+
+    def _ao_fechar_modal(self, _modal=None) -> None:
+        self._modal = None
 
     def _salvar_modal(self, modal: ModalFormulario) -> None:
         mensagem_erro = self.validar()

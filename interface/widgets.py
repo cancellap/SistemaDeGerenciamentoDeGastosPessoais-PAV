@@ -5,6 +5,7 @@ from tkinter import font as tkfont
 from tkinter import ttk
 
 from interface.tema import (
+    ALTURA_LINHA_LISTA,
     COR_BLOCO,
     COR_DESTAQUE,
     COR_DESTAQUE_HOVER,
@@ -22,6 +23,9 @@ from interface.tema import (
 # Limites da altura dinâmica da lista (em linhas visíveis).
 ALTURA_LISTA_MIN = 1
 ALTURA_LISTA_MAX = 12
+# Precisa coincidir com o rowheight da Treeview.
+ALTURA_LINHA_ACAO = ALTURA_LINHA_LISTA
+
 
 
 def criar_retangulo_arredondado(canvas, x1, y1, x2, y2, raio, **kwargs):
@@ -173,7 +177,6 @@ class Secao(tk.Frame):
                 barra,
                 "Atualizar dados",
                 comando=ao_atualizar,
-                com_icone_atualizar=True,
             ).pack(side=tk.RIGHT, padx=(8, 0))
 
         self.painel = PainelArredondado(
@@ -419,9 +422,11 @@ class BotaoAcao(tk.Canvas):
         **kwargs,
     ):
         # Largura automática conforme o texto.
-        from interface.tema import FAMILIA_FONTE
-
-        metrica = tkfont.Font(family=FAMILIA_FONTE, size=10, weight="bold")
+        metrica = tkfont.Font(
+            family=fonte(10, True)[0],
+            size=fonte(10, True)[1],
+            weight="bold",
+        )
         largura = max(int(metrica.measure(texto) + 36), 110)
         altura = 40
 
@@ -900,8 +905,6 @@ COR_ACAO = "#3B82F6"
 COR_BOTAO_SECAO_TEXTO = "#1E3A5F"
 COR_BOTAO_SECAO_FUNDO = "#F1F5F9"
 COR_BOTAO_SECAO_BORDA = "#C7D2E0"
-ALTURA_LINHA_ACAO = 36
-
 
 class BotaoSecao(tk.Canvas):
     """Pílula da barra da seção (Cadastrar / Atualizar dados)."""
@@ -911,7 +914,6 @@ class BotaoSecao(tk.Canvas):
         master,
         texto: str,
         comando,
-        com_icone_atualizar: bool = False,
         destaque: bool = False,
         **kwargs,
     ):
@@ -923,11 +925,13 @@ class BotaoSecao(tk.Canvas):
 
         self.texto = texto
         self.comando = comando
-        self.com_icone = com_icone_atualizar
         self.destaque = destaque
-        metrica = tkfont.Font(family=fonte(10)[0], size=10, weight="bold" if destaque else "normal")
-        extra = 28 if com_icone_atualizar else 0
-        self._largura = max(int(metrica.measure(texto) + 28 + extra), 110)
+        metrica = tkfont.Font(
+            family=fonte(10)[0],
+            size=fonte(10)[1],
+            weight="bold" if destaque else "normal",
+        )
+        self._largura = max(int(metrica.measure(texto) + 28), 110)
         self._altura = 34
 
         super().__init__(
@@ -968,32 +972,13 @@ class BotaoSecao(tk.Canvas):
             outline=borda,
             width=1,
         )
-        x_texto = self._largura // 2
-        if self.com_icone:
-            self._desenhar_icone_atualizar(12, self._altura // 2)
-            x_texto = (self._largura + 18) // 2
         self.create_text(
-            x_texto,
+            self._largura // 2,
             self._altura // 2,
             text=self.texto,
             fill=cor_texto,
             font=fonte(10, peso),
         )
-
-    def _desenhar_icone_atualizar(self, cx: int, cy: int) -> None:
-        """Dois arcos com setas (refresh), no estilo da referência."""
-        cor = COR_BOTAO_SECAO_TEXTO
-        self.create_arc(
-            cx - 6, cy - 6, cx + 6, cy + 6,
-            start=40, extent=200, style=tk.ARC, outline=cor, width=1.5,
-        )
-        self.create_arc(
-            cx - 6, cy - 6, cx + 6, cy + 6,
-            start=220, extent=200, style=tk.ARC, outline=cor, width=1.5,
-        )
-        # Pontas das setas.
-        self.create_line(cx + 4, cy - 6, cx + 7, cy - 3, fill=cor, width=1.5)
-        self.create_line(cx - 4, cy + 6, cx - 7, cy + 3, fill=cor, width=1.5)
 
 
 class BotaoTextoAcao(tk.Canvas):
@@ -1008,12 +993,16 @@ class BotaoTextoAcao(tk.Canvas):
         self.texto = texto
         self.comando = comando
         self.perigo = perigo
-        metrica = tkfont.Font(family=fonte(9, True)[0], size=9, weight="bold")
-        self._largura = max(int(metrica.measure(texto) + 20), 72)
+        metrica = tkfont.Font(
+            family=fonte(9, True)[0],
+            size=fonte(9, True)[1],
+            weight="bold",
+        )
+        self._largura = max(int(metrica.measure(texto) + 22), 76)
         super().__init__(
             master,
             width=self._largura,
-            height=28,
+            height=30,
             bg=fundo,
             highlightthickness=0,
             bd=0,
@@ -1040,7 +1029,7 @@ class BotaoTextoAcao(tk.Canvas):
             1,
             1,
             self._largura - 1,
-            27,
+            29,
             10,
             fill=fundo,
             outline=borda,
@@ -1048,7 +1037,7 @@ class BotaoTextoAcao(tk.Canvas):
         )
         self.create_text(
             self._largura // 2,
-            14,
+            15,
             text=self.texto,
             fill=texto,
             font=fonte(9, True),
@@ -1105,7 +1094,9 @@ def criar_lista_moderna(
     colunas_dados = list(colunas)
     titulos_dados = list(titulos)
     larguras_dados = list(larguras)
-    largura_acoes = 168
+    largura_acoes = 184
+    # Colunas de texto longo podem stretch junto com a flexível.
+    colunas_stretch = {c for c in colunas if c in {coluna_flexivel, "categoria", "nome", "descricao", "email"}}
 
     # Faixa de cabeçalho com cor suave (sem linha cinza).
     faixa = tk.Frame(master, bg=COR_LISTA_CABECALHO, height=38)
@@ -1149,11 +1140,11 @@ def criar_lista_moderna(
     tree.column("#0", width=0, minwidth=0, stretch=False)
 
     for coluna, largura in zip(colunas, larguras):
-        if coluna == coluna_flexivel:
+        if coluna in colunas_stretch:
             tree.column(
                 coluna,
                 width=largura,
-                minwidth=max(90, largura // 2),
+                minwidth=max(90, min(largura, 120)),
                 anchor=tk.W,
                 stretch=True,
             )
@@ -1169,7 +1160,6 @@ def criar_lista_moderna(
     tree.tag_configure("zebra", background="#ECFEFF")
 
     scroll = ScrollModern(area, comando=tree.yview, cor_fundo=COR_LISTA_FUNDO)
-    tree.configure(yscrollcommand=scroll.set)
     tree._scroll_lista = scroll
     tree._com_acoes = com_acoes
 
@@ -1182,6 +1172,13 @@ def criar_lista_moderna(
         tree._ao_excluir = None
 
     tree.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+    def _ao_rolar_lista(*args) -> None:
+        scroll.set(*args)
+        if com_acoes:
+            tree.after_idle(lambda: atualizar_botoes_acoes(tree))
+
+    tree.configure(yscrollcommand=_ao_rolar_lista)
 
     def _sincronizar_cabecalho(_evento=None) -> None:
         filhos = tree.get_children()
@@ -1214,10 +1211,14 @@ def criar_lista_moderna(
 
     def _rolar(evento):
         tree.yview_scroll(int(-1 * (evento.delta / 120)), "units")
+        if com_acoes:
+            tree.after_idle(lambda: atualizar_botoes_acoes(tree))
         return "break"
 
     tree.bind("<MouseWheel>", _rolar)
     area.bind("<MouseWheel>", _rolar)
+    if com_acoes:
+        frame_acoes.bind("<MouseWheel>", _rolar)
 
     return tree
 
@@ -1229,7 +1230,7 @@ def configurar_acoes_lista(tree: ttk.Treeview, ao_editar, ao_excluir) -> None:
 
 
 def atualizar_botoes_acoes(tree: ttk.Treeview) -> None:
-    """Recria os botões Atualizar/Excluir alinhados a cada linha."""
+    """Posiciona Atualizar/Excluir alinhados à bbox de cada linha visível."""
     frame = getattr(tree, "_frame_acoes", None)
     if frame is None:
         return
@@ -1242,11 +1243,15 @@ def atualizar_botoes_acoes(tree: ttk.Treeview) -> None:
         return
 
     for iid in tree.get_children():
-        linha = tk.Frame(
-            frame, bg=COR_LISTA_FUNDO, height=ALTURA_LINHA_ACAO
-        )
-        linha.pack(fill=tk.X)
-        linha.pack_propagate(False)
+        caixa = tree.bbox(iid)
+        if not caixa:
+            continue
+        _x, y, _largura, altura = caixa
+        if altura <= 1:
+            continue
+
+        linha = tk.Frame(frame, bg=COR_LISTA_FUNDO)
+        linha.place(x=0, y=y, relwidth=1, height=altura)
 
         centro = tk.Frame(linha, bg=COR_LISTA_FUNDO)
         centro.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
@@ -1285,6 +1290,7 @@ def ajustar_altura_lista(tree: ttk.Treeview, quantidade: int) -> None:
         sincronizar()
     if getattr(tree, "_com_acoes", False):
         atualizar_botoes_acoes(tree)
+        tree.after_idle(lambda: atualizar_botoes_acoes(tree))
 
     # Avisa o card pai para recalcular a altura (sem buraco branco).
     widget = tree

@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from interface.client.api_client import ApiClient
+from interface.views.analise_frame import AnaliseFrame
 from interface.views.categoria_frame import CategoriaFrame
 from interface.views.gasto_frame import GastoFrame
 from interface.views.usuario_frame import UsuarioFrame
@@ -16,7 +17,7 @@ class MainWindow(tk.Tk):
         super().__init__()
 
         self.title("Análise de Gastos Pessoais")
-        self.geometry("800x560")
+        self.geometry("800x620")
 
         # Um único client HTTP compartilhado por todas as abas.
         self.api = ApiClient()
@@ -27,14 +28,4 @@ class MainWindow(tk.Tk):
         notebook.add(CategoriaFrame(notebook, self.api), text="Categorias")
         notebook.add(UsuarioFrame(notebook, self.api), text="Usuários")
         notebook.add(GastoFrame(notebook, self.api), text="Gastos")
-        notebook.add(self._aba_placeholder("Análises"), text="Análises")
-
-    def _aba_placeholder(self, nome: str) -> ttk.Frame:
-        """Frame temporário até a entidade ser implementada."""
-        frame = ttk.Frame(self)
-        label = ttk.Label(
-            frame,
-            text=f"Aba {nome}: será implementada nas próximas fases.",
-        )
-        label.pack(padx=16, pady=16)
-        return frame
+        notebook.add(AnaliseFrame(notebook, self.api), text="Análises")

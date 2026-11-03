@@ -190,10 +190,10 @@ class BaseCrudFrame(ttk.Frame):
             dados = self.montar_payload()
             if self.id_atual is None:
                 self.api.criar(self.recurso, dados)
-                mostrar_sucesso(modal, "Registro criado.")
+                mensagem = "Registro criado."
             else:
                 self.api.atualizar(self.recurso, self.id_atual, dados)
-                mostrar_sucesso(modal, "Registro atualizado.")
+                mensagem = "Registro atualizado."
         except ApiError as erro:
             mostrar_erro(modal, erro.mensagem)
             if "não encontrad" in erro.mensagem.lower():
@@ -203,10 +203,12 @@ class BaseCrudFrame(ttk.Frame):
                 self.atualizar_lista()
             return
 
+        # Fecha o formulário antes do feedback, para não empilhar modais.
         modal.destroy()
         self._modal = None
         self.id_atual = None
         self.atualizar_lista()
+        mostrar_sucesso(self._janela(), mensagem)
 
     def confirmar_exclusao(self, id_registro: int) -> None:
         ok = confirmar_acao(

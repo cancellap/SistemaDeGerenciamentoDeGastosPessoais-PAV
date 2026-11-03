@@ -1134,8 +1134,8 @@ def criar_lista_moderna(
         columns=colunas,
         show="",
         height=altura,
-        selectmode="browse",
-        cursor="hand2",
+        selectmode="none",
+        cursor="arrow",
     )
     tree.column("#0", width=0, minwidth=0, stretch=False)
 

@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -27,7 +27,9 @@ class CategoriaRepository:
         return list(self.db.scalars(statement).all())
 
     def get_by_name(self, nome: str) -> Categoria | None:
-        statement = select(Categoria).where(Categoria.nome == nome)
+        statement = select(Categoria).where(
+            func.lower(Categoria.nome) == nome.lower()
+        )
         return self.db.scalar(statement)
 
     def update(self, categoria: Categoria, nome: str) -> Categoria:

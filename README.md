@@ -1,5 +1,7 @@
 # SistemaDeGerenciamentoDeGastosPessoais-PAV
 
+## para rodar o front python -m interface.main   
+
 ## API
 
 A API utiliza FastAPI, SQLAlchemy e PostgreSQL, organizada nas camadas:
